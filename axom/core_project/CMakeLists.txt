@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.18)
-project(cpp_only_project LANGUAGES CXX CUDA)
+project(core_project LANGUAGES CXX)
+# project(cpp_only_project LANGUAGES CXX CUDA)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
