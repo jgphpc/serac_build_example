@@ -1,0 +1,1 @@
+rm -fr build ;cmake -S . -B build && cd build ; mm help ; mmv serac_cuda
