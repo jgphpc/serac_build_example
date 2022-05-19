@@ -1,0 +1,51 @@
+#!/bin/bash
+
+#{{{ script to build hip version with hipcc:
+# To compile HIP code with the hipcc compiler wrapper, load the following
+# modules in your environment.
+
+spack unload cuda
+module load CrayEnv
+module load rocm
+
+> ml -t
+perftools-base/21.12.0
+ModuleLabel/label
+init-lumi/0.1
+craype-x86-rome
+libfabric/1.11.0.4.106
+craype-network-ofi
+xpmem/2.2.40-2.1_3.9__g3cf3325.shasta
+CrayEnv
+cce/13.0.0
+craype/2.7.13
+cray-dsmml/0.2.2
+cray-mpich/8.1.12
+cray-libsci/21.08.1.2
+PrgEnv-cray/8.2.0
+rocm/4.5.2
+# After that you can use the hipcc compiler wrapper to compile HIP code.
+
+rm -f *.o *.a
+SRC=serac_build_example.git
+CXX_FLAGS="-I$SRC/axom -std=c++17 -DSPH_HIP=1 -fPIC"
+CUDA_FLAGS="-I$SRC/axom --offload-arch=gfx908 -I$HIP_PATH/include -D__HIP_PLATFORM_AMD__=1 -w"
+#
+hipcc -x hip $CXX_FLAGS $CUDA_FLAGS -c $SRC/axom/cpp_cuda_project/geometry.cu -o geometry.cu.o -fgpu-rdc
+# llvm-ar qc libcpp_cuda.a geometry.cu.o
+# llvm-ranlib libcpp_cuda.a
+#
+hipcc $CXX_FLAGS -c $SRC/axom/cpp_only_project/parse_input.cpp -o parse_input.cpp.o
+# -I$HIP_PATH/include -D__HIP_PLATFORM_AMD__=1
+# llvm-ar qc libcpp_only.a parse_input.cpp.o
+# llvm-ranlib libcpp_only.a
+#
+hipcc -x hip $CXX_FLAGS $CUDA_FLAGS -c $SRC/main.cu -o main.cu.o -fgpu-rdc
+#
+hipcc $CXX_FLAGS $CUDA_FLAGS -fPIC -fgpu-rdc -shared -dlink \
+parse_input.cpp.o geometry.cu.o main.cu.o -o device_link.o --hip-link
+#
+hipcc parse_input.cpp.o geometry.cu.o main.cu.o device_link.o -o exe \
+#
+export OMP_NUM_THREADS=1 ;srun --gpus 1 -N1 -n1 -c$OMP_NUM_THREADS -t1 --partition=eap -A project_465000105 ./exe
+#}}}

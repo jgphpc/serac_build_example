@@ -1,0 +1,53 @@
+#!/bin/bash
+
+#{{{ script to build cuda version:
+module rm craype-accel-amd-gfx908
+module rm rocm
+spack load cuda
+> ml -t
+perftools-base/21.12.0
+ModuleLabel/label
+init-lumi/0.1
+craype-x86-rome
+libfabric/1.11.0.4.106
+craype-network-ofi
+xpmem/2.2.40-2.1_3.9__g3cf3325.shasta
+CrayEnv
+cce/13.0.0
+craype/2.7.13
+cray-dsmml/0.2.2
+cray-mpich/8.1.12
+cray-libsci/21.08.1.2
+PrgEnv-cray/8.2.0
+
+rm -f *.o *.a
+SRC=serac_build_example.git
+CXX_FLAGS="-I$SRC/axom -std=c++17 -DSPH_CUDA=1"
+CUDA_FLAGS="-forward-unknown-to-host-compiler -I$SRC/axom --generate-code=arch=compute_60,code=[compute_60,sm_60] -std=c++17 -rdc=true "
+nvcc -x cu $CXX_FLAGS $CUDA_FLAGS -c $SRC/axom/cpp_cuda_project/geometry.cu -o geometry.cu.o
+ar qc libcpp_cuda.a geometry.cu.o
+ranlib libcpp_cuda.a
+#
+CC $CXX_FLAGS -c $SRC/axom/cpp_only_project/parse_input.cpp -o parse_input.cpp.o
+ar qc libcpp_only.a parse_input.cpp.o
+ranlib libcpp_only.a
+#
+nvcc -x cu $CXX_FLAGS $CUDA_FLAGS -c $SRC/main.cu -o main.cu.o
+#
+CUDAD=$(dirname $(dirname $(which nvcc)))
+echo CUDAD=$CUDAD
+# nvcc $FLAGS -arch=sm_60 -Xcompiler=-fPIC -shared -dlink main.cu.o -o device_link.o \
+nvcc $CXX_FLAGS $CUDA_FLAGS -arch=sm_60 -Xcompiler=-fPIC -shared -dlink main.cu.o -o device_link.o \
+-L$CUDAD/targets/x86_64-linux/lib/stubs -L$CUDAD/targets/x86_64-linux/lib \
+libcpp_only.a libcpp_cuda.a -lcudadevrt -lcudart_static -lrt -lpthread -ldl
+#
+CC main.cu.o device_link.o -o exe \
+-L$CUDAD/targets/x86_64-linux/lib/stubs -L$CUDAD/targets/x86_64-linux/lib \
+libcpp_only.a libcpp_cuda.a -lcudadevrt -lcudart_static -lrt -lpthread -ldl
+
+# dom:
+# rm -f core* ;OMP_NUM_THREADS=1 srun -n1 -t1 -Cgpu -A`id -gn` ./exe
+inside serac cuda kernel...
+1.000000
+0
+#}}}
