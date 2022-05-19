@@ -1,3 +1,7 @@
+#if defined(SPH_HIP)
+#include "hip/hip_runtime.h"
+#endif
+
 #if defined(__HIPCC__) || defined(__CUDACC__)
 //#if defined(SPH_HIP) || defined(SPH_CUDA)
 #define AXOM_HOST_DEVICE __host__ __device__
